@@ -84,7 +84,7 @@ proc get*(sophia: var Sophia, key: openarray[byte]): seq[byte] =
   var valptr = o.sp_getstring("value", addr valsize)
   var valb: seq[byte] = newSeq[byte](valsize)
   if not valptr.isNil and valsize > 0:
-    copyMem(addr valb[0], cast[ptr byte](valptr), valsize)
+    copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
   checkErr o.sp_destroy()
   result = valb
 
@@ -101,7 +101,7 @@ iterator gets*(sophia: var Sophia, key: openarray[byte]): tuple[key: seq[byte], 
       var keyptr = o.sp_getstring("key", addr keysize)
       var keyb: seq[byte] = newSeq[byte](keysize)
       if not keyptr.isNil and keysize > 0:
-        copyMem(addr keyb[0], cast[ptr byte](keyptr), keysize)
+        copyMem(addr keyb[0], cast[ptr byte](keyptr), keyb.len)
       var i = key.high
       if keyb.high < i:
         break next
@@ -113,7 +113,7 @@ iterator gets*(sophia: var Sophia, key: openarray[byte]): tuple[key: seq[byte], 
       var valptr = o.sp_getstring("value", addr valsize)
       var valb: seq[byte] = newSeq[byte](valsize)
       if not valptr.isNil and valsize > 0:
-        copyMem(addr valb[0], cast[ptr byte](valptr), valsize)
+        copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
       yield (key: keyb, val: valb)
       o = sp_get(cursor, o)
   checkErr cursor.sp_destroy()
@@ -150,7 +150,7 @@ iterator getsRev*(sophia: var Sophia, key: openarray[byte]): tuple[key: seq[byte
       var keyptr = o.sp_getstring("key", addr keysize)
       var keyb: seq[byte] = newSeq[byte](keysize)
       if not keyptr.isNil and keysize > 0:
-        copyMem(addr keyb[0], cast[ptr byte](keyptr), keysize)
+        copyMem(addr keyb[0], cast[ptr byte](keyptr), keyb.len)
       var i = key.high
       if keyb.high < i:
         break prev
@@ -162,7 +162,7 @@ iterator getsRev*(sophia: var Sophia, key: openarray[byte]): tuple[key: seq[byte
       var valptr = o.sp_getstring("value", addr valsize)
       var valb: seq[byte] = newSeq[byte](valsize)
       if not valptr.isNil and valsize > 0:
-        copyMem(addr valb[0], cast[ptr byte](valptr), valsize)
+        copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
       yield (key: keyb, val: valb)
       o = sp_get(cursor, o)
   checkErr cursor.sp_destroy()
