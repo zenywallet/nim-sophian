@@ -79,7 +79,7 @@ proc get*(sophia: Sophia, key: openarray[byte]): seq[byte] =
   checkErr o.sp_setstring("key", cast[pointer](unsafeAddr key[0]), key.len.cint)
   o = sophia.db.sp_get(o)
   if o.isNil:
-    return cast[seq[byte]](nil)
+    return
   var valsize: cint
   var valptr = o.sp_getstring("value", addr valsize)
   var valb: seq[byte] = newSeq[byte](valsize)
