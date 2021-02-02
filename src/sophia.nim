@@ -6,7 +6,7 @@ const libsophiaPath = splitPath(currentSourcePath()).head / "../deps/sophia"
 {.passL: libsophiaPath / "libsophia.a".}
 
 type
-  Sophia* = object
+  Sophia* = ref object
     env: pointer
     db: pointer
   SophiaErr* = object of Exception
@@ -49,7 +49,7 @@ template checkErr(err: cint) {.dirty.} =
     else:
       raise newException(SophiaErr, "env is nil")
 
-proc open*(sophia: var Sophia, dbpath: string) =
+proc open*(sophia: Sophia, dbpath: string) =
   sophia.env = sp_env()
   if sophia.env.isNil:
     raise newException(SophiaErr, "env is nil")
@@ -61,10 +61,10 @@ proc open*(sophia: var Sophia, dbpath: string) =
   if sophia.db.isNil:
     raise newException(SophiaErr, "db is nil")
 
-proc close*(sophia: var Sophia) =
+proc close*(sophia: Sophia) =
   checkErr sophia.env.sp_destroy()
 
-proc put*(sophia: var Sophia, key: openarray[byte], value: openarray[byte]) =
+proc put*(sophia: Sophia, key: openarray[byte], value: openarray[byte]) =
   var o = sophia.db.sp_document()
   if o.isNil:
     raise newException(SophiaErr, "document is nil")
@@ -72,7 +72,7 @@ proc put*(sophia: var Sophia, key: openarray[byte], value: openarray[byte]) =
   checkErr o.sp_setstring("value", cast[pointer](unsafeAddr value[0]), value.len.cint)
   checkErr sophia.db.sp_set(o)
 
-proc get*(sophia: var Sophia, key: openarray[byte]): seq[byte] =
+proc get*(sophia: Sophia, key: openarray[byte]): seq[byte] =
   var o = sophia.db.sp_document()
   if o.isNil:
     raise newException(SophiaErr, "document is nil")
@@ -88,7 +88,7 @@ proc get*(sophia: var Sophia, key: openarray[byte]): seq[byte] =
   checkErr o.sp_destroy()
   result = valb
 
-iterator gets*(sophia: var Sophia, key: openarray[byte]): tuple[key: seq[byte], val: seq[byte]] =
+iterator gets*(sophia: Sophia, key: openarray[byte]): tuple[key: seq[byte], val: seq[byte]] =
   var cursor = sophia.env.sp_cursor()
   var o = sophia.db.sp_document()
   if o.isNil:
@@ -132,7 +132,7 @@ proc key_countup(key: openarray[byte]): tuple[carry: bool, key: seq[byte]] =
     k.fill(0xff)
   (carry, k)
 
-iterator getsRev*(sophia: var Sophia, key: openarray[byte]): tuple[key: seq[byte], val: seq[byte]] =
+iterator getsRev*(sophia: Sophia, key: openarray[byte]): tuple[key: seq[byte], val: seq[byte]] =
   var cursor = sophia.env.sp_cursor()
   var o = sophia.db.sp_document()
   if o.isNil:
@@ -167,7 +167,7 @@ iterator getsRev*(sophia: var Sophia, key: openarray[byte]): tuple[key: seq[byte
       o = sp_get(cursor, o)
   checkErr cursor.sp_destroy()
 
-proc del*(sophia: var Sophia, key: openarray[byte]) =
+proc del*(sophia: Sophia, key: openarray[byte]) =
   var o = sophia.db.sp_document()
   if o.isNil:
     raise newException(SophiaErr, "document is nil")
@@ -176,7 +176,7 @@ proc del*(sophia: var Sophia, key: openarray[byte]) =
 
 
 when isMainModule:
-  var db: Sophia
+  var db = new Sophia
   db.open("dbpath/dbname")
 
   block test1:
