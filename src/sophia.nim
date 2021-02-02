@@ -95,26 +95,57 @@ iterator gets*(sophia: Sophia, key: openarray[byte]): tuple[key: seq[byte], val:
     raise newException(SophiaErr, "document is nil")
   checkErr o.sp_setstring("key", cast[pointer](unsafeAddr key[0]), key.len.cint)
   o = sp_get(cursor, o)
-  block next:
+  block loop:
     while not o.isNil:
       var keysize: cint = 0
       var keyptr = o.sp_getstring("key", addr keysize)
-      var keyb: seq[byte] = newSeq[byte](keysize)
-      if not keyptr.isNil and keysize > 0:
+      if not keyptr.isNil and keysize >= key.len:
+        var keyb: seq[byte] = newSeq[byte](keysize)
         copyMem(addr keyb[0], cast[ptr byte](keyptr), keyb.len)
-      var i = key.high
-      if keyb.high < i:
-        break next
-      while i >= 0:
-        if keyb[i] != key[i]:
-          break next
-        dec(i)
-      var valsize: cint = 0
-      var valptr = o.sp_getstring("value", addr valsize)
-      var valb: seq[byte] = newSeq[byte](valsize)
-      if not valptr.isNil and valsize > 0:
-        copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
-      yield (key: keyb, val: valb)
+        var i = key.high
+        while i >= 0:
+          if keyb[i] != key[i]:
+            break loop
+          dec(i)
+        var valsize: cint = 0
+        var valptr = o.sp_getstring("value", addr valsize)
+        var valb: seq[byte] = newSeq[byte](valsize)
+        if not valptr.isNil and valsize > 0:
+          copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
+        yield (key: keyb, val: valb)
+      else:
+        break loop
+      o = sp_get(cursor, o)
+  checkErr cursor.sp_destroy()
+
+iterator gets*(sophia: Sophia, startkey: openarray[byte],
+              endkey: openarray[byte]): tuple[key: seq[byte], val: seq[byte]] =
+  var cursor = sophia.env.sp_cursor()
+  var o = sophia.db.sp_document()
+  if o.isNil:
+    raise newException(SophiaErr, "document is nil")
+  if startkey.len != endkey.len:
+    raise newException(SophiaErr, "key different lengths")
+  checkErr o.sp_setstring("key", cast[pointer](unsafeAddr startkey[0]), startkey.len.cint)
+  o = sp_get(cursor, o)
+  block loop:
+    while not o.isNil:
+      var keysize: cint = 0
+      var keyptr = o.sp_getstring("key", addr keysize)
+      if not keyptr.isNil and keysize >= endkey.len:
+        var keyb: seq[byte] = newSeq[byte](keysize)
+        copyMem(addr keyb[0], cast[ptr byte](keyptr), keyb.len)
+        for i in 0..endkey.high:
+          if keyb[i] > endkey[i]:
+            break loop
+        var valsize: cint = 0
+        var valptr = o.sp_getstring("value", addr valsize)
+        var valb: seq[byte] = newSeq[byte](valsize)
+        if not valptr.isNil and valsize > 0:
+          copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
+        yield (key: keyb, val: valb)
+      else:
+        break loop
       o = sp_get(cursor, o)
   checkErr cursor.sp_destroy()
 
@@ -144,26 +175,64 @@ iterator getsRev*(sophia: Sophia, key: openarray[byte]): tuple[key: seq[byte], v
     checkErr o.sp_setstring("order", "<".cstring, 0)
   checkErr o.sp_setstring("key", cast[pointer](unsafeAddr lastkey[0]), lastkey.len.cint)
   o = sp_get(cursor, o)
-  block prev:
+  block loop:
     while not o.isNil:
       var keysize: cint = 0
       var keyptr = o.sp_getstring("key", addr keysize)
       var keyb: seq[byte] = newSeq[byte](keysize)
-      if not keyptr.isNil and keysize > 0:
+      if not keyptr.isNil and keysize >= key.len:
         copyMem(addr keyb[0], cast[ptr byte](keyptr), keyb.len)
-      var i = key.high
-      if keyb.high < i:
-        break prev
-      while i >= 0:
-        if keyb[i] != key[i]:
-          break prev
-        dec(i)
-      var valsize: cint = 0
-      var valptr = o.sp_getstring("value", addr valsize)
-      var valb: seq[byte] = newSeq[byte](valsize)
-      if not valptr.isNil and valsize > 0:
-        copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
-      yield (key: keyb, val: valb)
+        var i = key.high
+        if keyb.high < i:
+          break loop
+        while i >= 0:
+          if keyb[i] != key[i]:
+            break loop
+          dec(i)
+        var valsize: cint = 0
+        var valptr = o.sp_getstring("value", addr valsize)
+        var valb: seq[byte] = newSeq[byte](valsize)
+        if not valptr.isNil and valsize > 0:
+          copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
+        yield (key: keyb, val: valb)
+      else:
+        break loop
+      o = sp_get(cursor, o)
+  checkErr cursor.sp_destroy()
+
+iterator getsRev*(sophia: Sophia, startkey: openarray[byte],
+                  endkey: openarray[byte]): tuple[key: seq[byte], val: seq[byte]] =
+  var cursor = sophia.env.sp_cursor()
+  var o = sophia.db.sp_document()
+  if o.isNil:
+    raise newException(SophiaErr, "document is nil")
+  if startkey.len != endkey.len:
+    raise newException(SophiaErr, "key different lengths")
+  let (carry, lastkey) = key_countup(startkey)
+  if carry:
+    checkErr o.sp_setstring("order", "<=".cstring, 0)
+  else:
+    checkErr o.sp_setstring("order", "<".cstring, 0)
+  checkErr o.sp_setstring("key", cast[pointer](unsafeAddr lastkey[0]), lastkey.len.cint)
+  o = sp_get(cursor, o)
+  block loop:
+    while not o.isNil:
+      var keysize: cint = 0
+      var keyptr = o.sp_getstring("key", addr keysize)
+      var keyb: seq[byte] = newSeq[byte](keysize)
+      if not keyptr.isNil and keysize >= endkey.len:
+        copyMem(addr keyb[0], cast[ptr byte](keyptr), keyb.len)
+        for i in 0..endkey.high:
+          if keyb[i] < endkey[i]:
+            break loop
+        var valsize: cint = 0
+        var valptr = o.sp_getstring("value", addr valsize)
+        var valb: seq[byte] = newSeq[byte](valsize)
+        if not valptr.isNil and valsize > 0:
+          copyMem(addr valb[0], cast[ptr byte](valptr), valb.len)
+        yield (key: keyb, val: valb)
+      else:
+        break loop
       o = sp_get(cursor, o)
   checkErr cursor.sp_destroy()
 
