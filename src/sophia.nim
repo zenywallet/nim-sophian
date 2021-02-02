@@ -2,8 +2,8 @@
 
 import os, algorithm
 
-const libsophiaPath = splitPath(currentSourcePath()).head & "/../deps/sophia"
-{.passL: libsophiaPath & "/libsophia.a".}
+const libsophiaPath = splitPath(currentSourcePath()).head / "../deps/sophia"
+{.passL: libsophiaPath / "libsophia.a".}
 
 type
   Sophia* = object
