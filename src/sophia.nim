@@ -53,6 +53,7 @@ proc open*(sophia: Sophia, dbpath: string) =
   sophia.env = sp_env()
   if sophia.env.isNil:
     raise newException(SophiaErr, "env is nil")
+  checkErr sophia.env.sp_setint("log.enable", int64_t(0))
   var path = splitPath(dbpath)
   checkErr sophia.env.sp_setstring("sophia.path", path.head.cstring, 0)
   checkErr sophia.env.sp_setstring("db", path.tail.cstring, 0)
